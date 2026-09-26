@@ -1,7 +1,5 @@
 Build plan — phased
 
-See ARCHITECTURE.md for the tech stack and diagrams referenced below.
-
 Phase 1: Single-instance fixed window limiter
 Build the dumbest version first. In-memory map of IP → count, reset every N seconds. Get it rejecting requests with 429 Too Many Requests. This is just to get the proxy skeleton working.
 Identify the client by real IP, not blindly by whatever `X-Forwarded-For` says — if you skip this now, every check you build in later phases (rate limit, reputation, anomaly) is spoofable by just setting that header. Only trust it when the request comes from your own load balancer's address.

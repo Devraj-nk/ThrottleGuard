@@ -8,6 +8,33 @@ Real problem solved: This is literally what companies pay Cloudflare/Kong for.
 Resume line: "Built a Redis-backed rate limiter with sliding window + token bucket algorithms, reducing simulated brute-force success rate by X%."
 Depth to add: Distributed rate limiting across multiple gateway instances (this is the hard, interesting part — naive per-instance limiting breaks under horizontal scaling).
 
+## Current implementation
+
+The initial Go service provides a reverse proxy, a health endpoint, trusted connection-based client identity, and a thread-safe fixed-window in-memory limiter. Redis-backed distributed limiting is the next planned implementation phase.
+
+### Run locally
+
+Start a backend at `http://localhost:9000`, then run the gateway:
+
+```powershell
+go run ./cmd/throttleguard
+```
+
+The gateway listens on `http://localhost:8080`. Configuration is available through `THROTTLEGUARD_ADDRESS`, `THROTTLEGUARD_BACKEND_URL`, `THROTTLEGUARD_RATE_LIMIT`, and `THROTTLEGUARD_RATE_WINDOW`.
+
+Run the checks with:
+
+```powershell
+go test ./...
+go vet ./...
+```
+
+Or start the gateway and an example backend together:
+
+```powershell
+docker compose up --build
+```
+
 ## Tech stack
 
 | Layer | Choice | Why |
@@ -112,9 +139,9 @@ Gateway instances are **stateless**: all shared state (counts, reputation, and b
 		  |                                      v
 		  |                               +-------------+
 		  +------------------------------>| Response    |
-								    +------+------+ 
-										 |
-										 v
+								          +------+------+ 
+										     |
+										     v
 							   +------------------------+
 							   | Prometheus counters    |
 							   +------------------------+

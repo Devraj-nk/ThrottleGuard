@@ -1,0 +1,17 @@
+services:
+  gateway:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      THROTTLEGUARD_BACKEND_URL: http://backend:9000
+      THROTTLEGUARD_RATE_LIMIT: "10"
+      THROTTLEGUARD_RATE_WINDOW: 1s
+    depends_on:
+      - backend
+
+  backend:
+    image: hashicorp/http-echo:1.0
+    command: ["-listen=:9000", "-text=backend response"]
+    expose:
+      - "9000"
