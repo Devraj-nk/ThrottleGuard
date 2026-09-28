@@ -21,14 +21,25 @@ func TestAllowStopsRequestsAfterLimit(t *testing.T) {
 }
 
 func TestAllowResetsAfterWindow(t *testing.T) {
-	requestLimiter := New(1, time.Millisecond)
+	currentTime := time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)
+	requestLimiter := newWithClock(2, time.Second, func() time.Time {
+		return currentTime
+	})
 
 	if !requestLimiter.Allow("198.51.100.10") {
 		t.Fatal("first request should be allowed")
 	}
-	time.Sleep(2 * time.Millisecond)
+	currentTime = currentTime.Add(500 * time.Millisecond)
 	if !requestLimiter.Allow("198.51.100.10") {
-		t.Fatal("request after the window should be allowed")
+		t.Fatal("second request should be allowed")
+	}
+	currentTime = currentTime.Add(499 * time.Millisecond)
+	if requestLimiter.Allow("198.51.100.10") {
+		t.Fatal("request should be rejected while both recent requests are in the window")
+	}
+	currentTime = currentTime.Add(500 * time.Millisecond)
+	if !requestLimiter.Allow("198.51.100.10") {
+		t.Fatal("request should be allowed after the oldest request leaves the window")
 	}
 }
 

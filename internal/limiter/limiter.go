@@ -12,37 +12,40 @@ type Limiter struct {
 	mu      sync.Mutex
 	limit   int
 	window  time.Duration
-	entries map[string]entry
-}
-
-type entry struct {
-	count       int
-	windowStart time.Time
+	now     func() time.Time
+	entries map[string][]time.Time
 }
 
 func New(limit int, window time.Duration) *Limiter {
+	return newWithClock(limit, window, time.Now)
+}
+
+func newWithClock(limit int, window time.Duration, now func() time.Time) *Limiter {
 	return &Limiter{
 		limit:   limit,
 		window:  window,
-		entries: make(map[string]entry),
+		now:     now,
+		entries: make(map[string][]time.Time),
 	}
 }
 
 func (limiter *Limiter) Allow(key string) bool {
-	now := time.Now()
+	now := limiter.now()
 	limiter.mu.Lock()
 	defer limiter.mu.Unlock()
 
-	current, exists := limiter.entries[key]
-	if !exists || now.Sub(current.windowStart) >= limiter.window {
-		limiter.entries[key] = entry{count: 1, windowStart: now}
-		return true
+	cutoff := now.Add(-limiter.window)
+	requests := limiter.entries[key]
+	firstRecentRequest := 0
+	for firstRecentRequest < len(requests) && !requests[firstRecentRequest].After(cutoff) {
+		firstRecentRequest++
 	}
-	if current.count >= limiter.limit {
+	requests = requests[firstRecentRequest:]
+	if len(requests) >= limiter.limit {
+		limiter.entries[key] = requests
 		return false
 	}
-	current.count++
-	limiter.entries[key] = current
+	limiter.entries[key] = append(requests, now)
 	return true
 }
 

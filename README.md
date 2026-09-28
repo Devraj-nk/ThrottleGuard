@@ -10,7 +10,7 @@ Depth to add: Distributed rate limiting across multiple gateway instances (this 
 
 ## Current implementation
 
-The initial Go service provides a reverse proxy, a health endpoint, trusted connection-based client identity, and a thread-safe fixed-window in-memory limiter. Redis-backed distributed limiting is the next planned implementation phase.
+The initial Go service provides a reverse proxy, a health endpoint, trusted connection-based client identity, and a thread-safe sliding-window in-memory limiter. Redis-backed distributed limiting is the next planned implementation phase.
 
 ### Run locally
 
