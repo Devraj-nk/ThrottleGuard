@@ -10,6 +10,7 @@ import (
 type Settings struct {
 	Address    string
 	BackendURL string
+	RedisAddr  string
 	RateLimit  int
 	RateWindow time.Duration
 }
@@ -18,6 +19,7 @@ func Load() (Settings, error) {
 	settings := Settings{
 		Address:    valueOrDefault("THROTTLEGUARD_ADDRESS", ":8080"),
 		BackendURL: valueOrDefault("THROTTLEGUARD_BACKEND_URL", "http://localhost:9000"),
+		RedisAddr:  valueOrDefault("THROTTLEGUARD_REDIS_ADDR", ""),
 		RateLimit:  10,
 		RateWindow: time.Second,
 	}

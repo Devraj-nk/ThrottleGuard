@@ -8,6 +8,10 @@ import (
 	"time"
 )
 
+type RateLimiter interface {
+	Allow(string) bool
+}
+
 type Limiter struct {
 	mu      sync.Mutex
 	limit   int

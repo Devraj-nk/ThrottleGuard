@@ -1,5 +1,12 @@
 Build plan — phased
 
+Status update: Phase 1, Phase 2, and the Redis-backed Phase 3 foundation are complete in the current working tree.
+- Built the Go scaffold and reverse-proxy skeleton.
+- Added a real client IP extraction path from the socket connection.
+- Replaced the fixed-window approach with a sliding-window in-memory limiter.
+- Added a Redis-backed limiter using a Lua script over sorted sets for atomic check-and-increment.
+- Verified behavior with unit tests for memory-based and Redis-based limit exhaustion, expiry, and IP extraction.
+
 Phase 1: Single-instance fixed window limiter
 Build the dumbest version first. In-memory map of IP → count, reset every N seconds. Get it rejecting requests with 429 Too Many Requests. This is just to get the proxy skeleton working.
 Identify the client by real IP, not blindly by whatever `X-Forwarded-For` says — if you skip this now, every check you build in later phases (rate limit, reputation, anomaly) is spoofable by just setting that header. Only trust it when the request comes from your own load balancer's address.
@@ -7,10 +14,13 @@ Decide now what happens if the limiter's state is unavailable (fail-open and let
 
 Phase 2: Fix the boundary bug → sliding window
 Show yourself the fixed-window bug: hit 10 req/sec limit, send 10 requests at 0:59, then 10 more at 1:01 — you just let 20 through in ~2 seconds. Fix it with a sliding window counter (weighted average of current + previous window) or sliding log in Redis sorted sets.
+Implemented: timestamp-based sliding window keyed per client, with expiration of stale events and deterministic tests for window edge behavior.
 
 Phase 3: Move state to Redis
 Now make it work across restarts and prepare for multi-instance. Use ZADD with timestamp scores + ZREMRANGEBYSCORE to expire old entries, wrapped in a Lua script or MULTI/EXEC for atomicity — this is where you'll hit and learn about race conditions.
 Apply the fail-open/fail-closed decision from Phase 1 here: what does the gateway do on a Redis timeout? (Fail-open is the usual real-world default — a rate limiter outage shouldn't take down the whole API — but say so explicitly rather than let it be accidental.)
+
+Next milestone: add Redis to Docker Compose, add a `redis` client package, and implement a Lua-based rate-limit script that checks and increments in one command.
 
 Phase 4: Reputation scoring + anomaly detection layer
 These are two related but distinct things — build reputation as a persistent score per IP (e.g. a Redis hash with a decaying value), not just a byproduct of anomaly flags:

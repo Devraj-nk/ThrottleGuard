@@ -30,8 +30,13 @@ func main() {
 		os.Exit(1)
 	}
 
+	requestLimiter, err := newLimiter(settings)
+	if err != nil {
+		logger.Error("create limiter", "error", err)
+		os.Exit(1)
+	}
+
 	proxy := httputil.NewSingleHostReverseProxy(backendURL)
-	requestLimiter := limiter.New(settings.RateLimit, settings.RateWindow)
 	handler := newHandler(proxy, requestLimiter)
 	server := &http.Server{
 		Addr:              settings.Address,
@@ -66,7 +71,18 @@ func main() {
 	}
 }
 
-func newHandler(proxy http.Handler, requestLimiter *limiter.Limiter) http.Handler {
+func newLimiter(settings config.Settings) (limiter.RateLimiter, error) {
+	if settings.RedisAddr != "" {
+		redisLimiter, err := limiter.NewRedis(settings.RedisAddr, settings.RateLimit, settings.RateWindow)
+		if err != nil {
+			return nil, err
+		}
+		return redisLimiter, nil
+	}
+	return limiter.New(settings.RateLimit, settings.RateWindow), nil
+}
+
+func newHandler(proxy http.Handler, requestLimiter limiter.RateLimiter) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", func(response http.ResponseWriter, request *http.Request) {
 		response.WriteHeader(http.StatusOK)
@@ -76,7 +92,7 @@ func newHandler(proxy http.Handler, requestLimiter *limiter.Limiter) http.Handle
 	return mux
 }
 
-func rateLimitMiddleware(requestLimiter *limiter.Limiter, next http.Handler) http.Handler {
+func rateLimitMiddleware(requestLimiter limiter.RateLimiter, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 		clientIP := limiter.ClientIP(request)
 		if !requestLimiter.Allow(clientIP) {
