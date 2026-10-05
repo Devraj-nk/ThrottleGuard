@@ -3,7 +3,7 @@
 ## Status snapshot
 
 Project: ThrottleGuard
-Current milestone: Phase 2 complete; Phase 3 in progress.
+Current milestone: Phase 3 complete; Phase 4 in progress.
 
 ## Completed work
 
@@ -35,6 +35,11 @@ go vet ./...
 
 Both completed successfully in the current project state.
 
+### 5) Distributed topology
+- Added a Redis-backed integration test using two independent limiter clients against the same Redis instance.
+- Proved that requests counted by separate gateway instances share one global limit.
+- Expanded Docker Compose to three gateway services behind an nginx load balancer.
+
 ## Current implementation notes
 - The limiter is now backed by a Redis sorted-set script when a Redis address is configured.
 - The in-memory sliding-window limiter remains the fallback for local single-node development without Redis.
@@ -49,8 +54,8 @@ Both completed successfully in the current project state.
 - Define explicit fail-open vs fail-closed behavior when Redis is unavailable. In progress: the current implementation defaults to fail-open if Redis is unreachable at request time.
 
 ### Phase 4: Multi-instance verification
-- Run 3 gateway instances behind a local load balancer.
-- Prove that a central Redis limiter prevents the per-instance count bug.
+- Run 3 gateway instances behind a local load balancer. Topology added; runtime verification requires Docker.
+- Prove that a central Redis limiter prevents the per-instance count bug. ✅ Covered by the two-client integration test.
 - Capture distributed traffic patterns and rate-limit outcomes.
 
 ### Phase 5: Reputation + anomaly layer
@@ -64,4 +69,4 @@ Both completed successfully in the current project state.
 - Record before/after results and attach the numbers to the project narrative.
 
 ## Suggested next milestone
-Complete the Redis-backed atomic limiter and prove it with a local integration test before moving into the reputation and anomaly layers.
+Add request metrics and a load-test scenario, then use the running three-gateway topology to capture distributed rate-limit results before starting reputation and anomaly detection.

@@ -1,10 +1,12 @@
 Build plan — phased
 
-Status update: Phase 1, Phase 2, and the Redis-backed Phase 3 foundation are complete in the current working tree.
+Status update: Phase 1, Phase 2, Phase 3, and the core Phase 4 verification are complete in the current working tree.
 - Built the Go scaffold and reverse-proxy skeleton.
 - Added a real client IP extraction path from the socket connection.
 - Replaced the fixed-window approach with a sliding-window in-memory limiter.
 - Added a Redis-backed limiter using a Lua script over sorted sets for atomic check-and-increment.
+- Added a two-client distributed integration test proving that independent gateway instances share one Redis limit.
+- Added a three-gateway nginx load-balancer topology to Docker Compose.
 - Verified behavior with unit tests for memory-based and Redis-based limit exhaustion, expiry, and IP extraction.
 
 Phase 1: Single-instance fixed window limiter
@@ -20,7 +22,7 @@ Phase 3: Move state to Redis
 Now make it work across restarts and prepare for multi-instance. Use ZADD with timestamp scores + ZREMRANGEBYSCORE to expire old entries, wrapped in a Lua script or MULTI/EXEC for atomicity — this is where you'll hit and learn about race conditions.
 Apply the fail-open/fail-closed decision from Phase 1 here: what does the gateway do on a Redis timeout? (Fail-open is the usual real-world default — a rate limiter outage shouldn't take down the whole API — but say so explicitly rather than let it be accidental.)
 
-Next milestone: add Redis to Docker Compose, add a `redis` client package, and implement a Lua-based rate-limit script that checks and increments in one command.
+Next milestone: add request metrics and load-test scenarios, then capture distributed rate-limit results from the three-gateway topology.
 
 Phase 4: Reputation scoring + anomaly detection layer
 These are two related but distinct things — build reputation as a persistent score per IP (e.g. a Redis hash with a decaying value), not just a byproduct of anomaly flags:
